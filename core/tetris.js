@@ -76,7 +76,7 @@ export default class Tetris {
   constructor(context) {
     document.addEventListener('keydown', this.onKeyDown.bind(this));
     document.addEventListener('keyup', this.onKeyUp.bind(this));
-    context.clearColor(0, 0, 0, 1);
+    context.clearColor(0.05, 0.05, 0.05, 1);
     this.downArrowPressed = false;
     this.context = context;
     this.init();
@@ -242,7 +242,11 @@ export default class Tetris {
       }
       if (obstructed) {
         for (let i = 0; i < 4; i++) {
-          this.grid[occupiedSquares[i][1]][occupiedSquares[i][0]] = pieceColors[this.activePiece];
+          let x = occupiedSquares[i][0];
+          let y = occupiedSquares[i][1];
+          if (x >= 0 && y >= 0 && x < 10 && y < 20) {
+            this.grid[occupiedSquares[i][1]][occupiedSquares[i][0]] = pieceColors[this.activePiece];
+          }
         }
         let fullLines = [];
         for (let row = 0; row < 20; row++) {
