@@ -136,6 +136,13 @@ export default class Tetris {
 
     this.scoreText = new RenderableText(this.context, "score", [-1.5, 0.5], [0.02, 0.02]);
     this.actualScoreText = new RenderableText(this.context, "0", [-1.21, 0.3], [0.02, 0.02]);
+
+    this.levelText = new RenderableText(this.context, "level", [-1.5, -0.3], [0.02, 0.02]);
+    this.actualLevelText = new RenderableText(this.context, "1", [-1.21, -0.5], [0.02, 0.02]);
+
+    this.gameOver = false;
+    this.linesCleared = 0;
+    this.level = 1;
     this.score = 0;
 
     this.coloredShaderProgram = new ColoredShaderProgram(this.context);
@@ -208,6 +215,10 @@ export default class Tetris {
 
   update() {
 
+    if (this.gameOver) {
+      return;
+    }
+
     // Assure projection matrix is correct
     this.coloredShaderProgram.use();
     this.coloredShaderProgram.setProjectionMatrix(Mat4.scale(this.context.canvas.height / this.context.canvas.width, 1.0, 1.0));
@@ -218,7 +229,7 @@ export default class Tetris {
 
     // Update game
     this.ticksPassed++;
-    if (this.ticksPassed >= 30 || (this.ticksPassed >= 5 && this.downArrowPressed)) {
+    if (this.ticksPassed >= Math.floor(30 / this.level) || (this.ticksPassed >= 5 && this.downArrowPressed)) {
       let occupiedSquares = this.getActivePieceOccupiedSquares();
       let obstructed = false;
       for (let i = 0; i < 4; i++) {
@@ -278,6 +289,20 @@ export default class Tetris {
               break;
           }
           this.actualScoreText.setText(this.score.toString());
+          this.linesCleared += fullLines.length;
+          if (this.linesCleared >= 10) {
+            this.linesCleared = 0;
+            this.level++;
+            this.actualLevelText.setText(this.level.toString());
+          }
+        } else {
+          for (const cell of this.grid[19]) {
+            if (cell !== null) {
+              this.gameOver = true;
+              alert("Game over! Score: " + this.score);
+              return;
+            }
+          }
         }
         this.startNewPiece();
       } else {
@@ -318,5 +343,8 @@ export default class Tetris {
     }
     this.scoreText.draw(this.textShaderProgram);
     this.actualScoreText.draw(this.textShaderProgram);
+    
+    this.levelText.draw(this.textShaderProgram);
+    this.actualLevelText.draw(this.textShaderProgram);
   }
 };

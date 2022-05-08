@@ -5,8 +5,10 @@ export default class RenderableText {
 
   constructor(context, string, position, size) {
   
+    this.size = size;
     this.context = context;
-    this.modelMatrix = this.calculateModelMatrix(position, size);
+    this.position = position;
+    this.modelMatrix = this.calculateModelMatrix();
 
     this.setText(string);
     this.loadFontTexture();
@@ -38,13 +40,13 @@ export default class RenderableText {
     this.context.texParameteri(this.context.TEXTURE_2D, this.context.TEXTURE_MAG_FILTER, this.context.NEAREST);
   }
 
-  calculateModelMatrix(position, size) {
+  calculateModelMatrix() {
     let translationMatrix = Mat4.translate(
-      position[0] / size[0],
-      position[1] / size[1],
+      this.position[0] / this.size[0],
+      this.position[1] / this.size[1],
       0
     );
-    let scaleMatrix = Mat4.scale(size[0], size[1], 1.0);
+    let scaleMatrix = Mat4.scale(this.size[0], this.size[1], 1.0);
     return translationMatrix.multiply(scaleMatrix);
   }
 
