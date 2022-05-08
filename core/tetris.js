@@ -2,12 +2,9 @@ import ColoredShaderProgram from '../graphics/colored_shader_program.js';
 import TextShaderProgram from '../graphics/text_shader_program.js';
 import SquareRenderer from '../graphics/square_renderer.js';
 import RenderableText from '../graphics/renderable_text.js';
-import Square from '../graphics/square.js';
 import Mat4 from './mat4.js';
 
-const GameState = {
-  PIECE_FALLING: 0
-};
+const borderColor = [0.2, 0.2, 0.2, 1.0];
 
 const PIECES = [
   'I',
@@ -100,7 +97,7 @@ export default class Tetris {
       for (let i = 0; i < 4; i++) {
         let x = occupiedSquares[i][0];
         let y = occupiedSquares[i][1];
-        if (x < 0 || x > 9 || y < 0 || y > 19 || this.grid[y][x].occupied) {
+        if (x < 0 || x > 9 || y < 0 || y > 19 || this.grid[y][x] !== null) {
           validRotation = false;
           break;
         }
@@ -120,7 +117,7 @@ export default class Tetris {
       for (let i = 0; i < 4; i++) {
         let x = occupiedSquares[i][0];
         let y = occupiedSquares[i][1];
-        if (x < 0 || x > 9 || y < 0 || y > 19 || this.grid[y][x].occupied) {
+        if (x < 0 || x > 9 || y < 0 || y > 19 || this.grid[y][x] !== null) {
           validMove = false;
           break;
         }
@@ -139,29 +136,55 @@ export default class Tetris {
 
     this.scoreText = new RenderableText(this.context, "score", [-1.5, 0.5], [0.02, 0.02]);
     this.actualScoreText = new RenderableText(this.context, "0", [-1.21, 0.3], [0.02, 0.02]);
+    this.score = 0;
 
     this.coloredShaderProgram = new ColoredShaderProgram(this.context);
     this.squareRenderer = new SquareRenderer(this.context, this.coloredShaderProgram);
 
     // Initialize grid
     this.grid = [];
+    this.border = [];
+    this.gridModelMatrices = [];
     for (let row = 0; row < 20; row++) {
+      this.border.push(
+        this.calculateModelMatrix(
+          [-0.55, -0.95 + row * 0.1, 0],
+          [0.1, 0.1]
+        )
+      );
+      this.border.push(
+        this.calculateModelMatrix(
+          [0.55, -0.95 + row * 0.1, 0],
+          [0.1, 0.1]
+        )
+      );
       let gridRow = [];
+      let gridRowModelMatrices = [];
       for (let col = 0; col < 10; col++) {
-        gridRow.push({
-          occupied: false,
-          square: new Square(
-            [-0.45 + (col * 0.1), -0.95 + (row * 0.1), 0],
-            [0.097, 0.097],
-            [0.2, 0.2, 0.2, 1.0]
+        gridRow.push(null);
+        gridRowModelMatrices.push(
+          this.calculateModelMatrix(
+            [-0.45 + col * 0.1, -0.95 + row * 0.1],
+            [0.1, 0.1]
           )
-        });
+        );
       }
       this.grid.push(gridRow);
+      this.gridModelMatrices.push(gridRowModelMatrices);
     }
 
     // Setup first falling piece
     this.startNewPiece();
+  }
+
+  calculateModelMatrix(position, size) {
+    let translationMatrix = Mat4.translate(
+      position[0] / size[0],
+      position[1] / size[1],
+      0
+    );
+    let scaleMatrix = Mat4.scale(size[0], size[1], 1.0);
+    return translationMatrix.multiply(scaleMatrix);
   }
 
   startNewPiece() {
@@ -201,25 +224,20 @@ export default class Tetris {
       for (let i = 0; i < 4; i++) {
         let dx = occupiedSquares[i][0];
         let dy = occupiedSquares[i][1];
-        if (dy == 0 || (dy - 1 < 20 && this.grid[dy - 1][dx].occupied)) {
+        if (dy == 0 || (dy - 1 < 20 && this.grid[dy - 1][dx] !== null)) {
           obstructed = true;
           break;
         }
       }
       if (obstructed) {
         for (let i = 0; i < 4; i++) {
-          this.grid[occupiedSquares[i][1]][occupiedSquares[i][0]].occupied = true;
-          this.grid[occupiedSquares[i][1]][occupiedSquares[i][0]].square = new Square(
-            [-0.45 + (occupiedSquares[i][0] * 0.1), -0.95 + (occupiedSquares[i][1] * 0.1), 0],
-            [0.1, 0.1],
-            pieceColors[this.activePiece]
-          );
+          this.grid[occupiedSquares[i][1]][occupiedSquares[i][0]] = pieceColors[this.activePiece];
         }
         let fullLines = [];
         for (let row = 0; row < 20; row++) {
           let isRowFull = true;
           for (let col = 0; col < 10; col++) {
-            if (!this.grid[row][col].occupied) {
+            if (this.grid[row][col] === null) {
               isRowFull = false;
               break;
             }
@@ -228,7 +246,39 @@ export default class Tetris {
             fullLines.push(row);
           }
         }
+        fullLines.sort(function(a, b) {
+          return b - a;
+        });
+        for (const row of fullLines) {
+          this.grid.splice(row, 1);
+        }
+        for (let i = 0; i < fullLines.length; i++) {
+          let gridRow = [];
+          for (let j = 0; j < 10; j++) {
+            gridRow.push(null);
+          }
+          this.grid.push(gridRow);
+        }
+        if (fullLines.length > 0) {
+          switch (fullLines.length) {
+            case 1:
+              this.score += 40;
+              break;
+  
+            case 2:
+              this.score += 100;
+              break;
+  
+            case 3:
+              this.score += 300;
+              break;
 
+            default:
+              this.score += 1200;
+              break;
+          }
+          this.actualScoreText.setText(this.score.toString());
+        }
         this.startNewPiece();
       } else {
         this.centerLocation[1]--;
@@ -241,19 +291,29 @@ export default class Tetris {
     this.context.clear(this.context.COLOR_BUFFER_BIT);
     for (let row = 0; row < 20; row++) {
       for (let col = 0; col < 10; col++) {
-        this.squareRenderer.draw(this.grid[row][col].square);
+        if (this.grid[row][col] !== null) {
+          this.squareRenderer.draw(
+            this.gridModelMatrices[row][col],
+            this.grid[row][col]
+          );
+        }
       }
+    }
+    for (const border of this.border) {
+      this.squareRenderer.draw(
+        border,
+        borderColor
+      );
     }
     let occupiedSquares = this.getActivePieceOccupiedSquares();
     for (let i = 0; i < 4; i++) {
       let dx = occupiedSquares[i][0];
       let dy = occupiedSquares[i][1];
       if (dx >= 0 && dx < 10 && dy >= 0 && dy < 20) {
-        this.squareRenderer.draw(new Square(
-          [-0.45 + (dx * 0.1), -0.95 + (dy * 0.1), 0],
-          [0.1, 0.1],
+        this.squareRenderer.draw(
+          this.gridModelMatrices[dy][dx],
           pieceColors[this.activePiece]
-        ));
+        );
       }
     }
     this.scoreText.draw(this.textShaderProgram);
