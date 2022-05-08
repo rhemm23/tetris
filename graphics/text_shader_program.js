@@ -41,13 +41,13 @@ export default class TextShaderProgram extends ShaderProgram {
   }
 
   bindPositionBuffer(positionBuffer) {
-    this.context.bindBuffer(this.context.ARRAY_BUFFER, positionBuffer.buffer);
+    positionBuffer.bind();
     this.context.vertexAttribPointer(this.positionLocation, 2, this.context.FLOAT, false, 0, 0);
     this.context.enableVertexAttribArray(this.positionLocation);
   }
 
   bindTexCoordBuffer(texCoordBuffer) {
-    this.context.bindBuffer(this.context.ARRAY_BUFFER, texCoordBuffer.buffer);
+    texCoordBuffer.bind();
     this.context.vertexAttribPointer(this.textureCoordLocation, 2, this.context.FLOAT, false, 0, 0);
     this.context.enableVertexAttribArray(this.textureCoordLocation);
   }

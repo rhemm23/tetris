@@ -1,12 +1,20 @@
-import Buffer from "../graphics/buffer.js";
+import Buffer from "./buffer.js";
+import Mat4 from '../core/mat4.js';
 
-export default class TextBuilder {
+export default class RenderableText {
 
-  constructor(context) {
-
-    this.texture = context.createTexture();
-    context.bindTexture(context.TEXTURE_2D, this.texture);
+  constructor(context, string, position, size) {
+  
     this.context = context;
+    this.modelMatrix = this.calculateModelMatrix(position, size);
+
+    this.setText(string);
+    this.loadFontTexture();
+  }
+
+  loadFontTexture() {
+
+    this.texture = this.context.createTexture();
 
     this.fontImage = new Image();
     this.fontImage.src = 'resources/font.png';
@@ -30,7 +38,17 @@ export default class TextBuilder {
     this.context.texParameteri(this.context.TEXTURE_2D, this.context.TEXTURE_MAG_FILTER, this.context.NEAREST);
   }
 
-  createBuffersForText(string) {
+  calculateModelMatrix(position, size) {
+    let translationMatrix = Mat4.translate(
+      position[0] / size[0],
+      position[1] / size[1],
+      0
+    );
+    let scaleMatrix = Mat4.scale(size[0], size[1], 1.0);
+    return translationMatrix.multiply(scaleMatrix);
+  }
+
+  setText(string) {
     var positions = new Float32Array(string.length * 12);
     var texCoords = new Float32Array(string.length * 12);
     for (let i = 0; i < string.length; i++) {
@@ -75,9 +93,26 @@ export default class TextBuilder {
       texCoords[(i * 12) + 10] = u2;
       texCoords[(i * 12) + 11] = v2;
     }
-    return {
-      positionBuffer: new Buffer(this.context, positions),
-      texCoordBuffer: new Buffer(this.context, texCoords)
-    };
+    this.positionBuffer = new Buffer(this.context, positions);
+    this.texCoordBuffer = new Buffer(this.context, texCoords);
+    this.vertexCount = string.length * 6;
+  }
+
+  draw(textShaderProgram) {
+
+    this.context.enable(this.context.BLEND);
+    this.context.blendFunc(this.context.ONE, this.context.ONE_MINUS_SRC_ALPHA);
+
+    textShaderProgram.use();
+    this.context.activeTexture(this.context.TEXTURE0);
+    this.context.bindTexture(this.context.TEXTURE_2D, this.texture);
+    textShaderProgram.setTexture(0);
+
+    textShaderProgram.setModelMatrix(this.modelMatrix);
+    textShaderProgram.bindPositionBuffer(this.positionBuffer);
+    textShaderProgram.bindTexCoordBuffer(this.texCoordBuffer);
+
+    this.context.drawArrays(this.context.TRIANGLES, 0, this.vertexCount);
+    this.context.disable(this.context.BLEND);
   }
 };

@@ -1,7 +1,7 @@
 import ColoredShaderProgram from '../graphics/colored_shader_program.js';
 import TextShaderProgram from '../graphics/text_shader_program.js';
 import SquareRenderer from '../graphics/square_renderer.js';
-import TextBuilder from './text_builder.js';
+import RenderableText from '../graphics/renderable_text.js';
 import Square from '../graphics/square.js';
 import Mat4 from './mat4.js';
 
@@ -135,15 +135,10 @@ export default class Tetris {
 
   init() {
 
-    // Text rendering
     this.textShaderProgram = new TextShaderProgram(this.context);
-    this.textBuilder = new TextBuilder(this.context);
 
-    this.scoreModelMatrix = Mat4.translate(-80, 20, 0).multiply(Mat4.scale(0.02, 0.02, 1.0));
-    this.actualScoreModelMatrix = Mat4.translate(-65, 10, 0).multiply(Mat4.scale(0.02, 0.02, 1.0));
-
-    this.scoreBuffers = this.textBuilder.createBuffersForText("score");
-    this.actualScoreBuffers = this.textBuilder.createBuffersForText("0");
+    this.scoreText = new RenderableText(this.context, "score", [-1.5, 0.5], [0.02, 0.02]);
+    this.actualScoreText = new RenderableText(this.context, "0", [-1.21, 0.3], [0.02, 0.02]);
 
     this.coloredShaderProgram = new ColoredShaderProgram(this.context);
     this.squareRenderer = new SquareRenderer(this.context, this.coloredShaderProgram);
@@ -261,26 +256,7 @@ export default class Tetris {
         ));
       }
     }
-
-    this.context.enable(this.context.BLEND);
-    this.context.blendFunc(this.context.ONE, this.context.ONE_MINUS_SRC_ALPHA);
-
-    this.textShaderProgram.use();
-    this.context.activeTexture(this.context.TEXTURE0);
-    this.context.bindTexture(this.context.TEXTURE_2D, this.textBuilder.texture);
-    this.textShaderProgram.setTexture(0);
-
-    this.textShaderProgram.setModelMatrix(this.scoreModelMatrix);
-    this.textShaderProgram.bindPositionBuffer(this.scoreBuffers.positionBuffer);
-    this.textShaderProgram.bindTexCoordBuffer(this.scoreBuffers.texCoordBuffer);
-
-    this.context.drawArrays(this.context.TRIANGLES, 0, 30);
-
-    this.textShaderProgram.setModelMatrix(this.actualScoreModelMatrix);
-    this.textShaderProgram.bindPositionBuffer(this.actualScoreBuffers.positionBuffer);
-    this.textShaderProgram.bindTexCoordBuffer(this.actualScoreBuffers.texCoordBuffer);
-
-    this.context.drawArrays(this.context.TRIANGLES, 0, 6);
-    this.context.disable(this.context.BLEND);
+    this.scoreText.draw(this.textShaderProgram);
+    this.actualScoreText.draw(this.textShaderProgram);
   }
 };
